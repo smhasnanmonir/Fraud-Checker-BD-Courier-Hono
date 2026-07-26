@@ -74,6 +74,11 @@ export class PaperflyService extends BaseCourierService {
    * Fetch delivery statistics from Paperfly for the given phone number.
    */
   async getDeliveryStats(phoneNumber: string): Promise<DeliveryResult> {
+    // Skip if credentials not configured
+    if (!this.username || !this.password) {
+      return this.handleError('Config', new Error('Paperfly credentials not configured'));
+    }
+
     try {
       const token = await this.getToken();
 

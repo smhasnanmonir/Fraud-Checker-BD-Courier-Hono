@@ -11,29 +11,25 @@ import type { AppConfig } from '../types/index.js';
 dotenv.config();
 
 const envSchema = z.object({
-  // Steadfast
-  STEADFAST_USER: z.string().min(1, 'STEADFAST_USER is required'),
-  STEADFAST_PASSWORD: z.string().min(1, 'STEADFAST_PASSWORD is required'),
+  // Steadfast — optional, skip if not configured
+  STEADFAST_USER: z.string().optional(),
+  STEADFAST_PASSWORD: z.string().optional(),
 
-  // Pathao
+  // Pathao — required
   PATHAO_USER: z.string().min(1, 'PATHAO_USER is required'),
   PATHAO_PASSWORD: z.string().min(1, 'PATHAO_PASSWORD is required'),
 
-  // RedX
-  REDX_PHONE: z
-    .string()
-    .regex(/^01[3-9]\d{8}$/, 'REDX_PHONE must be a valid BD mobile (01XXXXXXXXX)'),
-  REDX_PASSWORD: z.string().min(1, 'REDX_PASSWORD is required'),
+  // RedX — optional, skip if not configured
+  REDX_PHONE: z.string().optional(),
+  REDX_PASSWORD: z.string().optional(),
 
-  // Paperfly
-  PAPERFLY_USER: z.string().min(1, 'PAPERFLY_USER is required'),
-  PAPERFLY_PASSWORD: z.string().min(1, 'PAPERFLY_PASSWORD is required'),
+  // Paperfly — optional, skip if not configured
+  PAPERFLY_USER: z.string().optional(),
+  PAPERFLY_PASSWORD: z.string().optional(),
 
-  // Carrybee
-  CARRYBEE_PHONE: z
-    .string()
-    .regex(/^01[3-9]\d{8}$/, 'CARRYBEE_PHONE must be a valid BD mobile (01XXXXXXXXX)'),
-  CARRYBEE_PASSWORD: z.string().min(1, 'CARRYBEE_PASSWORD is required'),
+  // Carrybee — optional, skip if not configured
+  CARRYBEE_PHONE: z.string().optional(),
+  CARRYBEE_PASSWORD: z.string().optional(),
 
   // Security — CORS origins (comma-separated). Defaults to all ("*") if unset.
   ALLOWED_ORIGINS: z.string().optional(),
@@ -56,24 +52,24 @@ if (!parsed.success) {
 /** Typed, validated application configuration */
 export const config: AppConfig = {
   steadfast: {
-    email: parsed.data.STEADFAST_USER,
-    password: parsed.data.STEADFAST_PASSWORD,
+    email: parsed.data.STEADFAST_USER ?? '',
+    password: parsed.data.STEADFAST_PASSWORD ?? '',
   },
   pathao: {
     username: parsed.data.PATHAO_USER,
     password: parsed.data.PATHAO_PASSWORD,
   },
   redx: {
-    phone: parsed.data.REDX_PHONE,
-    password: parsed.data.REDX_PASSWORD,
+    phone: parsed.data.REDX_PHONE ?? '',
+    password: parsed.data.REDX_PASSWORD ?? '',
   },
   paperfly: {
-    username: parsed.data.PAPERFLY_USER,
-    password: parsed.data.PAPERFLY_PASSWORD,
+    username: parsed.data.PAPERFLY_USER ?? '',
+    password: parsed.data.PAPERFLY_PASSWORD ?? '',
   },
   carrybee: {
-    phone: parsed.data.CARRYBEE_PHONE,
-    password: parsed.data.CARRYBEE_PASSWORD,
+    phone: parsed.data.CARRYBEE_PHONE ?? '',
+    password: parsed.data.CARRYBEE_PASSWORD ?? '',
   },
   allowedOrigins: parsed.data.ALLOWED_ORIGINS
     ? parsed.data.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)

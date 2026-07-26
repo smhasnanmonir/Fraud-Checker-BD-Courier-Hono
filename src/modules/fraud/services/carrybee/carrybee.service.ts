@@ -144,6 +144,11 @@ export class CarrybeeService extends BaseCourierService {
    * Fetch delivery statistics from Carrybee for the given phone number.
    */
   async getDeliveryStats(phoneNumber: string): Promise<DeliveryResult> {
+    // Skip if credentials not configured
+    if (!this.phone || !this.password) {
+      return this.handleError('Config', new Error('Carrybee credentials not configured'));
+    }
+
     try {
       const authData = await this.getAccessTokenAndBusinessId();
 

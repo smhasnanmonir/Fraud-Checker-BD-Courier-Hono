@@ -43,8 +43,10 @@ export class RedxService extends BaseCourierService {
     this.phone = config.redx.phone;
     this.password = config.redx.password;
 
-    // Validate the configured phone number (matches PHP constructor behavior)
-    checkBdMobile(this.phone);
+    // Validate the configured phone number only if configured
+    if (this.phone) {
+      checkBdMobile(this.phone);
+    }
   }
 
   /**
@@ -85,6 +87,11 @@ export class RedxService extends BaseCourierService {
    * Fetch delivery statistics from RedX for the given phone number.
    */
   async getDeliveryStats(queryPhone: string): Promise<DeliveryResult> {
+    // Skip if credentials not configured
+    if (!this.phone || !this.password) {
+      return this.handleError('Config', new Error('RedX credentials not configured'));
+    }
+
     try {
       checkBdMobile(queryPhone);
 

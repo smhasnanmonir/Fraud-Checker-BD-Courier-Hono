@@ -31,6 +31,11 @@ export class SteadfastService extends BaseCourierService {
    * Full login flow: CSRF → login → fraud check → logout.
    */
   async getDeliveryStats(phoneNumber: string): Promise<DeliveryResult> {
+    // Skip if credentials not configured
+    if (!this.email || !this.password) {
+      return this.handleError('Config', new Error('Steadfast credentials not configured'));
+    }
+
     try {
       // Step 1: Fetch login page to get CSRF token + initial cookies
       const loginPage = await httpRequest('https://steadfast.com.bd/login');
