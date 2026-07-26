@@ -1,0 +1,39 @@
+{
+  "name": "fraud-checker-hono",
+  "version": "1.0.0",
+  "description": "A fraud detection tool for e-commerce platforms to analyze customer order behavior across Steadfast, RedX, Pathao, Paperfly, and Carrybee couriers.",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "fraud-detection",
+    "courier",
+    "bangladesh",
+    "hono",
+    "typescript"
+  ],
+  "author": "smhasnanmonir",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@hono/node-server": "^2.0.12",
+    "@hono/zod-validator": "^0.9.0",
+    "dotenv": "^16.4.0",
+    "hono": "^4.7.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^11.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
