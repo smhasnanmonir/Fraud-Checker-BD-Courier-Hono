@@ -4,7 +4,7 @@
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
-import { checkBdMobile, bdMobileSchema } from '../../src/shared/validator.js';
+import { checkBdMobile, bdMobileSchema } from '../../src/shared/validator/validator.js';
 
 describe('bdMobileSchema', () => {
   describe('valid phone numbers', () => {

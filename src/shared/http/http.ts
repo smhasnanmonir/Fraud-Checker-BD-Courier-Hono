@@ -4,7 +4,7 @@
 // Uses native fetch with typed helpers for cookie management
 // ============================================================
 
-import type { HttpRequestOptions, HttpResponse } from '../types/index.js';
+import type { HttpRequestOptions, HttpResponse } from '../../types/index.js';
 
 /**
  * Parse all Set-Cookie headers from a Response into a Record.

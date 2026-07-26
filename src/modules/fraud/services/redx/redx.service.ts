@@ -8,10 +8,10 @@
 // ============================================================
 
 import type { DeliveryResult } from '../../../../types/index.js';
-import { httpRequest } from '../../../../shared/http.js';
-import { cache } from '../../../../shared/cache.js';
+import { httpRequest } from '../../../../shared/http/http.js';
+import { cache } from '../../../../shared/cache/cache.js';
 import { config } from '../../../../config/index.js';
-import { checkBdMobile } from '../../../../shared/validator.js';
+import { checkBdMobile } from '../../../../shared/validator/validator.js';
 import { BaseCourierService } from '../base/base-courier.service.js';
 
 const CACHE_KEY = 'redx_access_token';

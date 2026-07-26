@@ -6,9 +6,9 @@
 
 import type { FraudReport, DeliveryResult } from '../../../types/index.js';
 import { COURIER_NAMES as ALL_COURIERS, type CourierName } from '../../../types/index.js';
-import { logger } from '../../../shared/logger.js';
-import { toFraudReportDto, toSingleCourierCheckDto } from '../fraud.mapper.js';
-import type { FraudReportDto, SingleCourierCheckDto } from '../fraud.dto.js';
+import { logger } from '../../../shared/logger/logger.js';
+import { toFraudReportDto, toSingleCourierCheckDto } from '../mappers/fraud.mapper.js';
+import type { FraudReportDto, SingleCourierCheckDto } from '../dtos/fraud.dto.js';
 import { CarrybeeService, PaperflyService, PathaoService, RedxService, SteadfastService } from '../services/index.js';
 
 // ── Service Registry ─────────────────────────────────────

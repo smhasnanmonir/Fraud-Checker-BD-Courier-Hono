@@ -4,7 +4,7 @@
 // ============================================================
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MemoryCache } from '../../src/shared/cache.js';
+import { MemoryCache } from '../../src/shared/cache/cache.js';
 
 describe('MemoryCache', () => {
   let cache: MemoryCache;

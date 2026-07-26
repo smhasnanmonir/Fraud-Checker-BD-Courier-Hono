@@ -5,9 +5,9 @@
 
 import type { ErrorHandler } from 'hono';
 import { ZodError } from 'zod';
-import { AppError } from '../shared/errors.js';
-import { errorResponse } from '../shared/response.js';
-import { logger } from '../shared/logger.js';
+import { AppError } from '../shared/errors/errors.js';
+import { errorResponse } from '../shared/response/response.js';
+import { logger } from '../shared/logger/logger.js';
 
 export const errorHandler: ErrorHandler = (err, c) => {
   // Zod validation errors → 400

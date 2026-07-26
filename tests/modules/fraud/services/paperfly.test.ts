@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PaperflyService } from '../../../../src/modules/fraud/services/paperfly/paperfly.service.js';
 import { PAPERFLY_LOGIN_RESPONSE, PAPERFLY_SMART_CHECK_RESPONSE } from '../../../fixtures/paperfly.fixture.js';
-import { cache } from '../../../../src/shared/cache.js';
+import { cache } from '../../../../src/shared/cache/cache.js';
 
 vi.mock('../../../../src/config/index.js', () => ({
   config: {

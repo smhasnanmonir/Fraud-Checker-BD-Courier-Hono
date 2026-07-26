@@ -4,7 +4,7 @@
 // ============================================================
 
 import type { DeliveryResult, CourierName } from '../../../../types/index.js';
-import { createModuleLogger } from '../../../../shared/logger.js';
+import { createModuleLogger } from '../../../../shared/logger/logger.js';
 
 /**
  * Abstract base class for all courier services.

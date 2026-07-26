@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RedxService } from '../../../../src/modules/fraud/services/redx/redx.service.js';
 import { REDX_LOGIN_RESPONSE, REDX_PARCEL_RESPONSE } from '../../../fixtures/redx.fixture.js';
-import { cache } from '../../../../src/shared/cache.js';
+import { cache } from '../../../../src/shared/cache/cache.js';
 
 vi.mock('../../../../src/config/index.js', () => ({
   config: {

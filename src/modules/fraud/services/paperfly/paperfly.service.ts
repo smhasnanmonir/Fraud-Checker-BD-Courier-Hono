@@ -9,8 +9,8 @@
 // ============================================================
 
 import type { DeliveryResult } from '../../../../types/index.js';
-import { httpRequest } from '../../../../shared/http.js';
-import { cache } from '../../../../shared/cache.js';
+import { httpRequest } from '../../../../shared/http/http.js';
+import { cache } from '../../../../shared/cache/cache.js';
 import { config } from '../../../../config/index.js';
 import { BaseCourierService } from '../base/base-courier.service.js';
 

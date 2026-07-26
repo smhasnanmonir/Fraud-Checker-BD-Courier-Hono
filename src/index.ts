@@ -5,7 +5,7 @@
 
 import { serve } from '@hono/node-server';
 import { app } from './app.js';
-import { logger } from './shared/logger.js';
+import { logger } from './shared/logger/logger.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 

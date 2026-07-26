@@ -6,9 +6,9 @@
 
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
-import { phoneParamSchema, courierParamSchema } from '../fraud.schema.js';
+import { phoneParamSchema, courierParamSchema } from '../schemas/fraud.schema.js';
 import { checkAllCouriers, checkSingleCourier } from '../controllers/fraud.controller.js';
-import { successResponse, errorResponse } from '../../../shared/response.js';
+import { successResponse, errorResponse } from '../../../shared/response/response.js';
 import type { CourierName } from '../../../types/index.js';
 
 const fraudRoutes = new Hono();

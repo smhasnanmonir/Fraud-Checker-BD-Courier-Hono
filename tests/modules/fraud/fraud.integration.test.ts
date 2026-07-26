@@ -58,10 +58,10 @@ vi.mock('../../../src/modules/fraud/services/carrybee/carrybee.service.js', () =
 }));
 
 // Import AFTER mocks
-import { phoneParamSchema, courierParamSchema } from '../../../src/modules/fraud/fraud.schema.js';
+import { phoneParamSchema, courierParamSchema } from '../../../src/modules/fraud/schemas/fraud.schema.js';
 import { checkAllCouriers, checkSingleCourier } from '../../../src/modules/fraud/controllers/fraud.controller.js';
 import { healthCheck } from '../../../src/modules/health/controllers/health.controller.js';
-import { successResponse, errorResponse } from '../../../src/shared/response.js';
+import { successResponse, errorResponse } from '../../../src/shared/response/response.js';
 import { ZodError } from 'zod';
 
 // Build a minimal app for integration testing

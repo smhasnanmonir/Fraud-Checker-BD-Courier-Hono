@@ -4,7 +4,7 @@
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
-import { phoneParamSchema, courierParamSchema, fraudReportSchema } from '../../../src/modules/fraud/fraud.schema.js';
+import { phoneParamSchema, courierParamSchema, fraudReportSchema } from '../../../src/modules/fraud/schemas/fraud.schema.js';
 
 describe('phoneParamSchema', () => {
   it('should accept valid phone', () => {

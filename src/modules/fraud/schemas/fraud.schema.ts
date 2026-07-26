@@ -4,8 +4,8 @@
 // ============================================================
 
 import { z } from 'zod';
-import { bdMobileSchema } from '../../shared/validator.js';
-import { COURIER_NAMES } from '../../types/index.js';
+import { bdMobileSchema } from '../../../shared/validator/validator.js';
+import { COURIER_NAMES } from '../../../types/index.js';
 
 // ── Request Schemas ──────────────────────────────────────
 

@@ -9,7 +9,7 @@ import {
   CARRYBEE_SESSION_RESPONSE,
   CARRYBEE_FRAUD_RESPONSE,
 } from '../../../fixtures/carrybee.fixture.js';
-import { cache } from '../../../../src/shared/cache.js';
+import { cache } from '../../../../src/shared/cache/cache.js';
 
 vi.mock('../../../../src/config/index.js', () => ({
   config: {

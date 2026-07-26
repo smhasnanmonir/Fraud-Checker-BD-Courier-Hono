@@ -3,8 +3,8 @@
 // Transforms raw service results into DTOs
 // ============================================================
 
-import type { DeliveryResult, FraudReport, CourierName } from '../../types/index.js';
-import type { FraudReportDto, SingleCourierCheckDto, CourierResultDto } from './fraud.dto.js';
+import type { DeliveryResult, FraudReport, CourierName } from '../../../types/index.js';
+import type { FraudReportDto, SingleCourierCheckDto, CourierResultDto } from '../dtos/fraud.dto.js';
 
 /**
  * Map raw service DeliveryResult to API-facing CourierResultDto.

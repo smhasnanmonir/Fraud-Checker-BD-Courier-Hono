@@ -3,7 +3,7 @@
 // Ensures every response follows { success, data/message } shape
 // ============================================================
 
-import type { SuccessResponse, ErrorResponse } from '../types/index.js';
+import type { SuccessResponse, ErrorResponse } from '../../types/index.js';
 
 /**
  * Build a success response.

@@ -5,7 +5,7 @@
 // ============================================================
 
 import type { MiddlewareHandler } from 'hono';
-import { logger } from '../shared/logger.js';
+import { logger } from '../shared/logger/logger.js';
 
 export const requestLogger: MiddlewareHandler = async (c, next) => {
   const start = Date.now();

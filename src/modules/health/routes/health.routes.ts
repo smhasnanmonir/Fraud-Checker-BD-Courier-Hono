@@ -4,7 +4,7 @@
 
 import { Hono } from 'hono';
 import { healthCheck } from '../controllers/health.controller.js';
-import { successResponse } from '../../../shared/response.js';
+import { successResponse } from '../../../shared/response/response.js';
 
 const healthRoutes = new Hono();
 

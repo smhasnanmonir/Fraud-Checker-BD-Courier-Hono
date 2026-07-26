@@ -4,7 +4,7 @@
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
-import { mergeCookies } from '../../src/shared/http.js';
+import { mergeCookies } from '../../src/shared/http/http.js';
 
 describe('mergeCookies()', () => {
   it('should merge single cookie source', () => {

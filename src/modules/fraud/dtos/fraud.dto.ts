@@ -3,7 +3,7 @@
 // Controls what gets exposed in API responses
 // ============================================================
 
-import type { DeliveryResult, AggregateStats } from '../../types/index.js';
+import type { DeliveryResult, AggregateStats } from '../../../types/index.js';
 
 /**
  * DTO for a single courier's delivery result.
