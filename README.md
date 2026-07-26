@@ -1,10 +1,16 @@
 # Fraud Checker BD Courier — Hono
 
+> **Ported from** [AbiruzzamanMolla/Fraud-Checker-BD-Courier-Laravel](https://github.com/AbiruzzamanMolla/Fraud-Checker-BD-Courier-Laravel)
+>
+> Huge thanks to **Md Abiruzzaman Molla** ([@AbiruzzamanMolla](https://github.com/AbiruzzamanMolla)) for building the original Laravel package and discovering the courier API endpoints. This project would not exist without his work.
+>
+> This TypeScript/Hono port was built entirely with AI — **Mimo v2.5** model + **Pi Coding Agent**.
+
+---
+
 A fraud detection API for Bangladeshi e-commerce platforms. Analyzes customer delivery behavior across 5 major couriers: **Steadfast**, **Pathao**, **RedX**, **Paperfly**, and **Carrybee**.
 
 Check a phone number → get success/cancel ratios → decide whether to approve COD orders.
-
-**Ported from** [AbiruzzamanMolla/Fraud-Checker-BD-Courier-Laravel](https://github.com/AbiruzzamanMolla/Fraud-Checker-BD-Courier-Laravel) (PHP/Laravel) to **Hono + TypeScript**.
 
 ---
 
@@ -21,11 +27,11 @@ Check a phone number → get success/cancel ratios → decide whether to approve
 ```
 Request
   ↓
-Router (fraud.routes.ts)      ← Zod validation
+Router (routes/)              ← Zod validation
   ↓
-Controller (fraud.controller.ts) ← orchestration
+Controller (controllers/)     ← orchestration
   ↓
-Service (steadfast.service.ts)   ← business logic + API calls
+Service (services/)           ← business logic + API calls
   ↓
 External Courier API
 ```
@@ -35,6 +41,8 @@ External Courier API
 - **Controllers** — orchestrate services, format responses
 - **Services** — business logic, external API calls
 - **Schemas** — Zod validation + TypeScript type inference
+- **DTOs** — response shapes, never expose raw objects
+- **Mappers** — service results → DTOs
 - **Shared** — cache, HTTP client, validators, logger
 
 ---
@@ -43,39 +51,39 @@ External Courier API
 
 ```
 src/
-├── index.ts                          # Entry point
-├── app.ts                            # Hono app + middleware
+├── index.ts                              # Entry point
+├── app.ts                                # Hono app + middleware
 ├── config/
-│   └── env.ts                        # Typed env config (Zod validated)
+│   └── env.ts                            # Typed env config (Zod validated)
 ├── middleware/
-│   ├── error-handler.ts              # Global error handler
-│   └── pino-logger.ts               # Request logging
+│   ├── error-handler.ts                  # Global error handler
+│   └── pino-logger.ts                    # Request logging
 ├── shared/
-│   ├── cache.ts                      # In-memory TTL cache
-│   ├── errors.ts                     # Custom error classes
-│   ├── http.ts                       # Fetch wrapper with cookie support
-│   ├── logger.ts                     # Pino logger
-│   ├── response.ts                   # Consistent API response helpers
-│   └── validator.ts                  # Phone validation
+│   ├── cache/                            # In-memory TTL cache
+│   ├── errors/                           # Custom error classes
+│   ├── http/                             # Fetch wrapper with cookie support
+│   ├── logger/                           # Pino logger
+│   ├── response/                         # Consistent API response helpers
+│   └── validator/                        # Phone validation
 ├── modules/
 │   ├── fraud/
-│   │   ├── fraud.schema.ts           # Zod schemas
-│   │   ├── fraud.dto.ts              # Data transfer objects
-│   │   ├── fraud.mapper.ts           # Result → DTO mapping
-│   │   ├── fraud.controller.ts       # checkAllCouriers(), checkSingleCourier()
-│   │   ├── fraud.routes.ts           # GET /check/:phone, GET /check/:phone/:courier
-│   │   └── services/
-│   │       ├── base-courier.service.ts
-│   │       ├── steadfast.service.ts
-│   │       ├── pathao.service.ts
-│   │       ├── redx.service.ts
-│   │       ├── paperfly.service.ts
-│   │       └── carrybee.service.ts
+│   │   ├── controllers/                  # HTTP handlers
+│   │   ├── routes/                       # Path definitions + Zod validation
+│   │   ├── services/                     # Business logic (each courier in own folder)
+│   │   │   ├── base/                     # Abstract base with shared error handling
+│   │   │   ├── steadfast/
+│   │   │   ├── pathao/
+│   │   │   ├── redx/
+│   │   │   ├── paperfly/
+│   │   │   └── carrybee/
+│   │   ├── dtos/                         # Response shapes
+│   │   ├── mappers/                      # Service → DTO mapping
+│   │   └── schemas/                      # Zod schemas
 │   └── health/
-│       ├── health.controller.ts
-│       └── health.routes.ts
+│       ├── controllers/
+│       └── routes/
 └── types/
-    └── index.ts                      # All TypeScript types
+    └── index.ts                          # All TypeScript types
 ```
 
 ---
