@@ -4,7 +4,7 @@
 >
 > Huge thanks to **Md Abiruzzaman Molla** ([@AbiruzzamanMolla](https://github.com/AbiruzzamanMolla)) for building the original Laravel package and discovering the courier API endpoints. This project would not exist without his work.
 >
-> This TypeScript/Hono port was built entirely with AI — **Mimo v2.5** model + **Pi Coding Agent**.
+> This TypeScript/Hono port was built entirely with AI **Mimo v2.5** model + **Pi Coding Agent**.
 
 ---
 
