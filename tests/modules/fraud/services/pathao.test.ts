@@ -81,6 +81,6 @@ describe('PathaoService', () => {
     const result = await service.getDeliveryStats('01712345678');
 
     expect(result.error).toBeDefined();
-    expect(result.error).toContain('No access token');
+    expect(result.error).toBe('Courier service unavailable');
   });
 });

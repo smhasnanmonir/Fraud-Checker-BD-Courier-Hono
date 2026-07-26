@@ -90,7 +90,7 @@ describe('CarrybeeService', () => {
     const result = await service.getDeliveryStats('01712345678');
 
     expect(result.error).toBeDefined();
-    expect(result.error).toContain('Failed to authenticate');
+    expect(result.error).toBe('Courier service unavailable');
   });
 
   it('should handle 401 by evicting cache', async () => {

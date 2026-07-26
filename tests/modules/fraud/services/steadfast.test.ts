@@ -97,7 +97,7 @@ describe('SteadfastService', () => {
     const result = await service.getDeliveryStats('01712345678');
 
     expect(result.error).toBeDefined();
-    expect(result.error).toContain('CSRF');
+    expect(result.error).toBe('Courier service unavailable');
   });
 
   it('should handle login failure', async () => {
@@ -120,6 +120,6 @@ describe('SteadfastService', () => {
     const result = await service.getDeliveryStats('01712345678');
 
     expect(result.error).toBeDefined();
-    expect(result.error).toContain('Login');
+    expect(result.error).toBe('Courier service unavailable');
   });
 });

@@ -18,7 +18,8 @@ export abstract class BaseCourierService {
 
   /**
    * Standard error handler for all courier services.
-   * Logs the error and returns a DeliveryResult with error info.
+   * Logs the full error server-side; returns a generic error message
+   * in the DeliveryResult to avoid leaking upstream API details.
    */
   protected handleError(context: string, error: unknown): DeliveryResult {
     const message = error instanceof Error ? error.message : String(error);
@@ -28,7 +29,8 @@ export abstract class BaseCourierService {
       cancel: 0,
       total: 0,
       success_ratio: 0,
-      error: message,
+      // SECURITY: generic message — upstream details stay in logs only
+      error: 'Courier service unavailable',
     };
   }
 

@@ -43,9 +43,15 @@ export function mergeCookies(...sources: Record<string, string>[]): string {
     .join('; ');
 }
 
+/** Default timeout for outbound HTTP requests to courier APIs (15 seconds). */
+const DEFAULT_HTTP_TIMEOUT_MS = 15_000;
+
 /**
  * Make an HTTP request and return a typed response wrapper.
  * Replaces PHP: Http::get(), Http::post(), Http::withHeaders(), etc.
+ *
+ * SECURITY: All outbound requests are capped at 15s via AbortController
+ * to prevent slow courier APIs from hanging the server (DoS mitigation).
  */
 export async function httpRequest(
   url: string,
@@ -58,6 +64,7 @@ export async function httpRequest(
     cookies,
     followRedirects = true,
     formUrlEncoded = false,
+    timeoutMs = DEFAULT_HTTP_TIMEOUT_MS,
   } = options;
 
   const fetchHeaders: Record<string, string> = { ...headers };
@@ -84,6 +91,7 @@ export async function httpRequest(
     headers: fetchHeaders,
     body: fetchBody,
     redirect: followRedirects ? 'follow' : 'manual',
+    signal: timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined,
   });
 
   const textBody = await res.text();

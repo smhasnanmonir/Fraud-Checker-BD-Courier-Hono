@@ -71,7 +71,7 @@ export class SteadfastService extends BaseCourierService {
 
       // Step 3: Access fraud data
       const fraudResponse = await httpRequest(
-        `https://steadfast.com.bd/user/frauds/check/${phoneNumber}`,
+        `https://steadfast.com.bd/user/frauds/check/${encodeURIComponent(phoneNumber)}`,
         {
           method: 'GET',
           cookies: sessionCookies,

@@ -167,12 +167,12 @@ describe('GET /check/:phone', () => {
     expect(body.success).toBe(false);
   });
 
-  it('should return 400 for phone with +880 prefix', async () => {
+  it('should return 200 for phone with +880 prefix (normalized server-side)', async () => {
     const res = await app.request('/check/+8801712345678');
     const body = await res.json();
 
-    expect(res.status).toBe(400);
-    expect(body.success).toBe(false);
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
   });
 
   it('should return 400 for too short phone', async () => {

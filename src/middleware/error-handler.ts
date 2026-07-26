@@ -10,10 +10,10 @@ import { errorResponse } from '../shared/response/response.js';
 import { logger } from '../shared/logger/logger.js';
 
 export const errorHandler: ErrorHandler = (err, c) => {
-  // Zod validation errors → 400
+  // Zod validation errors → 400 (details logged, not leaked to client)
   if (err instanceof ZodError) {
     logger.warn({ errors: err.errors }, 'Validation error');
-    return c.json(errorResponse('Validation failed', err.errors), 400);
+    return c.json(errorResponse('Invalid input. Please check your request parameters.'), 400);
   }
 
   // Custom app errors → use their status code
@@ -22,7 +22,7 @@ export const errorHandler: ErrorHandler = (err, c) => {
     return c.json(errorResponse(err.message), err.statusCode as 400);
   }
 
-  // Unexpected errors → 500
+  // Unexpected errors → 500 (stack trace logged, generic message to client)
   logger.error({ error: err.message, stack: err.stack }, 'Unexpected error');
   return c.json(errorResponse('Internal server error'), 500);
 };

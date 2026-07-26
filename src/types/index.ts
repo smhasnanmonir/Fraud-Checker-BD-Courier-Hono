@@ -88,6 +88,8 @@ export interface AppConfig {
   readonly redx: RedxCredentials;
   readonly paperfly: PaperflyCredentials;
   readonly carrybee: CarrybeeCredentials;
+  readonly allowedOrigins: readonly string[];
+  readonly rateLimitPerMinute: number;
 }
 
 // ============================================================
@@ -116,6 +118,8 @@ export interface HttpRequestOptions {
   cookies?: Record<string, string>;
   followRedirects?: boolean;
   formUrlEncoded?: boolean;
+  /** Per-request timeout in milliseconds. 0 disables. Defaults to 15000. */
+  timeoutMs?: number;
 }
 
 export interface HttpResponse {

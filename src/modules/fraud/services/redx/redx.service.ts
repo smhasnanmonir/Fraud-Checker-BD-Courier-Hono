@@ -94,7 +94,7 @@ export class RedxService extends BaseCourierService {
       }
 
       const response = await httpRequest(
-        `https://api.redx.com.bd/v4.1/parcel?phone_number=${queryPhone}&parcel_type=all&status=`,
+        `https://api.redx.com.bd/v4.1/parcel?phone_number=${encodeURIComponent(queryPhone)}&parcel_type=all&status=`,
         {
           method: 'GET',
           headers: {

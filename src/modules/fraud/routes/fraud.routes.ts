@@ -9,6 +9,7 @@ import { zValidator } from '@hono/zod-validator';
 import { phoneParamSchema, courierParamSchema } from '../schemas/fraud.schema.js';
 import { checkAllCouriers, checkSingleCourier } from '../controllers/fraud.controller.js';
 import { successResponse, errorResponse } from '../../../shared/response/response.js';
+import { logger } from '../../../shared/logger/logger.js';
 import type { CourierName } from '../../../types/index.js';
 
 const fraudRoutes = new Hono();
@@ -32,8 +33,9 @@ fraudRoutes.get(
       const report = await checkAllCouriers(phone);
       return c.json(successResponse(report));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Internal server error';
-      return c.json(errorResponse(message), 500);
+      // SECURITY: log full error server-side, return generic message to client
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'checkAllCouriers failed');
+      return c.json(errorResponse('Internal server error'), 500);
     }
   },
 );
@@ -57,8 +59,9 @@ fraudRoutes.get(
       const result = await checkSingleCourier(phone, courier as CourierName);
       return c.json(successResponse(result));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Internal server error';
-      return c.json(errorResponse(message), 500);
+      // SECURITY: log full error server-side, return generic message to client
+      logger.error({ error: error instanceof Error ? error.message : String(error) }, 'checkSingleCourier failed');
+      return c.json(errorResponse('Internal server error'), 500);
     }
   },
 );

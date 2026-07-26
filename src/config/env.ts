@@ -34,6 +34,12 @@ const envSchema = z.object({
     .string()
     .regex(/^01[3-9]\d{8}$/, 'CARRYBEE_PHONE must be a valid BD mobile (01XXXXXXXXX)'),
   CARRYBEE_PASSWORD: z.string().min(1, 'CARRYBEE_PASSWORD is required'),
+
+  // Security — CORS origins (comma-separated). Defaults to all ("*") if unset.
+  ALLOWED_ORIGINS: z.string().optional(),
+
+  // Security — Rate limit per minute per IP. Defaults to 30 if unset.
+  RATE_LIMIT_PER_MINUTE: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -69,4 +75,10 @@ export const config: AppConfig = {
     phone: parsed.data.CARRYBEE_PHONE,
     password: parsed.data.CARRYBEE_PASSWORD,
   },
+  allowedOrigins: parsed.data.ALLOWED_ORIGINS
+    ? parsed.data.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+    : ['*'],
+  rateLimitPerMinute: parsed.data.RATE_LIMIT_PER_MINUTE
+    ? Number(parsed.data.RATE_LIMIT_PER_MINUTE)
+    : 30,
 } as const;

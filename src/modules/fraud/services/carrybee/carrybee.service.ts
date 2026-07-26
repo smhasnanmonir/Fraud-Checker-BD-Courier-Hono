@@ -155,7 +155,7 @@ export class CarrybeeService extends BaseCourierService {
       const cleanPhone = this.formatPhone(phoneNumber);
 
       const response = await httpRequest(
-        `https://api-merchant.carrybee.com/api/v2/businesses/${businessId}/fraud-check/${cleanPhone}`,
+        `https://api-merchant.carrybee.com/api/v2/businesses/${encodeURIComponent(businessId)}/fraud-check/${encodeURIComponent(cleanPhone)}`,
         {
           method: 'GET',
           headers: {

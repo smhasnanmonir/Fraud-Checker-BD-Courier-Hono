@@ -119,6 +119,10 @@ PAPERFLY_PASSWORD="your_password"
 
 CARRYBEE_PHONE="01XXXXXXXXX"
 CARRYBEE_PASSWORD="your_password"
+
+# Security (optional — see Security section for details)
+# ALLOWED_ORIGINS="https://yourapp.com"
+# RATE_LIMIT_PER_MINUTE=30
 ```
 
 ### 3. Run
@@ -197,13 +201,82 @@ curl http://localhost:3000/health
 
 ## Phone Number Format
 
-Numbers must be **11-digit Bangladeshi mobile** in local format:
+The API **automatically normalizes** phone numbers before validation. You can send any common BD mobile format and it will be cleaned up server-side.
 
-| ✅ Valid | ❌ Invalid |
-|----------|-----------|
-| `01712345678` | `+8801712345678` |
-| `01876543219` | `1234567890` |
-| `01312345678` | `02171234567` |
+| ✅ Accepted (auto-normalized) | Normalizes to |
+|-------------------------------|---------------|
+| `01712345678` | `01712345678` |
+| `+8801712345678` | `01712345678` |
+| `8801712345678` | `01712345678` |
+| `+880 171-234 5678` | `01712345678` |
+| `017 1234 5678` | `01712345678` |
+| `017-1234-5678` | `01712345678` |
+
+| ❌ Still invalid after normalization |
+|--------------------------------------|
+| `1234567890` (too short / wrong prefix) |
+| `02171234567` (landline, not mobile) |
+| `01234567890` (12 digits) |
+
+**What gets stripped:**
+1. **All non-digit characters** — aggressively removed first (XSS/SQLi/RCE prevention)
+2. `880` country code prefix
+3. Spaces, dashes `-`, parentheses `()`, dots `.`
+
+---
+
+## Security
+
+All user inputs are sanitized, validated, and rate-limited server-side to prevent XSS, CSRF, SQL injection, remote code execution, and DoS attacks.
+
+### Input Sanitization
+
+| Threat | Mitigation |
+|--------|------------|
+| **XSS** (Cross-Site Scripting) | Phone params stripped to digits-only; HTML tags stripped from string inputs |
+| **SQL Injection** | Non-digit characters removed before any DB query; no raw string interpolation |
+| **CSRF** | Stateless API (no session cookies); courier auth uses Bearer tokens |
+| **Remote Code Execution** | Input sanitized to digits-only; no `eval()`, `Function()`, or shell interpolation |
+
+**Normalization pipeline:**
+```
+Raw input → stripToDigits() → normalizeBdPhone() → regex validation → safe output
+```
+
+Example attack payloads that get neutralized:
+```
+"<script>alert(1)</script>01712345678"  → "01712345678" ✅
+"'; DROP TABLE users; --"              → "" → rejected ❌
+"<img onerror=alert(1) src=x>"          → "" → rejected ❌
+```
+
+### HTTP & API Hardening
+
+| Threat | Mitigation | Where |
+|--------|-------------|-------|
+| **No security headers** | `secureHeaders()` — HSTS, X-Content-Type-Options, X-Frame-Options, CSP, Referrer-Policy | `app.ts` |
+| **CORS abuse** | Restricted to `ALLOWED_ORIGINS` env var; GET-only methods | `app.ts` |
+| **DoS / credential abuse** | Rate limiting (`hono-rate-limiter`) — default 30 req/min per IP, configurable via `RATE_LIMIT_PER_MINUTE` | `app.ts` |
+| **Oversized body DoS** | `bodyLimit()` — 100kb cap | `app.ts` |
+| **Slow-loris hangs** | `timeout()` — 30s request timeout | `app.ts` |
+| **Hanging courier requests** | `AbortSignal.timeout()` — 15s per outbound HTTP call | `http.ts` |
+| **URL injection / SSRF** | `encodeURIComponent()` on all user-derived URL segments | courier services |
+
+### Information Leakage Prevention
+
+| Threat | Mitigation | Where |
+|--------|-------------|-------|
+| **Internal error messages** | Route handlers return generic `'Internal server error'`; full error logged server-side | `fraud.routes.ts` |
+| **Courier API details** | `handleError()` returns generic `'Courier service unavailable'`; upstream status/messages stay in logs | `base-courier.service.ts` |
+| **Zod schema structure** | Validation errors return generic message; detailed issues logged server-side | `error-handler.ts` |
+| **Path reflection** | 404 handler returns generic `'Resource not found'` (no path reflection) | `app.ts` |
+
+### Security Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ALLOWED_ORIGINS` | `*` (all) | Comma-separated CORS origins. **Set this in production!** |
+| `RATE_LIMIT_PER_MINUTE` | `30` | Max requests per minute per IP |
 
 ---
 
@@ -213,8 +286,8 @@ Numbers must be **11-digit Bangladeshi mobile** in local format:
 npm test
 ```
 
-**74 tests** covering:
-- Phone validation (valid/invalid numbers)
+**102 tests** covering:
+- Phone validation (valid/invalid/formatted numbers + XSS/SQLi payloads)
 - Cache (TTL expiry, cache-aside pattern)
 - Cookie helpers (parse, merge)
 - Zod schemas (request/response validation)
