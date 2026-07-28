@@ -1,5 +1,9 @@
 # Fraud Checker BD Courier — Hono
 
+![Hono](https://img.shields.io/badge/Hono-FF5A16?style=for-the-badge&logo=hono&logoColor=white)
+![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+
 > **Ported from** [AbiruzzamanMolla/Fraud-Checker-BD-Courier-Laravel](https://github.com/AbiruzzamanMolla/Fraud-Checker-BD-Courier-Laravel)
 >
 > Huge thanks to **Md Abiruzzaman Molla** ([@AbiruzzamanMolla](https://github.com/AbiruzzamanMolla)) for building the original Laravel package and discovering the courier API endpoints. This project would not exist without his work.
@@ -11,6 +15,245 @@
 A fraud detection API for Bangladeshi e-commerce platforms. Analyzes customer delivery behavior across 5 major couriers: **Steadfast**, **Pathao**, **RedX**, **Paperfly**, and **Carrybee**.
 
 Check a phone number → get success/cancel ratios → decide whether to approve COD orders.
+
+---
+
+## 🚀 Deployment
+
+This project can be deployed to several serverless platforms with minimal configuration.
+
+### Cloudflare Workers (Recommended)
+
+Cloudflare Workers is the native runtime for Hono and offers the best performance.
+
+**1. Install Wrangler**
+
+```bash
+npm install -g wrangler
+```
+
+**2. Login**
+
+```bash
+wrangler login
+```
+
+**3. Deploy**
+
+```bash
+wrangler deploy
+```
+
+Your app will be available at:
+
+```
+https://<worker-name>.<subdomain>.workers.dev
+```
+
+#### Environment Variables (Cloudflare)
+
+**Local** — create a `.dev.vars` file:
+
+```env
+STEADFAST_USER=your_email
+STEADFAST_PASSWORD=your_password
+PATHAO_USER=your_email
+PATHAO_PASSWORD=your_password
+REDX_PHONE=01XXXXXXXXX
+REDX_PASSWORD=your_password
+PAPERFLY_USER=your_username
+PAPERFLY_PASSWORD=your_password
+CARRYBEE_PHONE=01XXXXXXXXX
+CARRYBEE_PASSWORD=your_password
+```
+
+**Production** — use `wrangler secret put`:
+
+```bash
+wrangler secret put STEADFAST_USER
+wrangler secret put STEADFAST_PASSWORD
+wrangler secret put PATHAO_USER
+# ... repeat for all secrets
+```
+
+**Access in code:**
+
+```ts
+type Bindings = {
+  STEADFAST_USER: string
+  STEADFAST_PASSWORD: string
+  // ... other bindings
+}
+
+const app = new Hono<{ Bindings: Bindings }>()
+
+app.get('/', (c) => {
+  const user = c.env.STEADFAST_USER
+  return c.text(user)
+})
+```
+
+---
+
+### Vercel
+
+**1. Install the Vercel CLI**
+
+```bash
+npm install -g vercel
+```
+
+**2. Login**
+
+```bash
+vercel login
+```
+
+**3. Deploy**
+
+```bash
+vercel
+```
+
+For production:
+
+```bash
+vercel --prod
+```
+
+#### Vercel Setup
+
+Install the Vercel adapter:
+
+```bash
+npm install @hono/node-server @hono/vercel
+```
+
+Create `api/index.ts`:
+
+```ts
+import { handle } from '@hono/vercel'
+import app from '../src/app'
+
+export default handle(app)
+```
+
+Create `vercel.json`:
+
+```json
+{
+  "functions": {
+    "api/**/*.ts": {
+      "runtime": "@vercel/node"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.ts"
+    }
+  ]
+}
+```
+
+#### Environment Variables (Vercel)
+
+**Locally:**
+
+```bash
+vercel env pull .env.local
+```
+
+**On Vercel Dashboard:**
+
+Go to your project → Settings → Environment Variables and add:
+
+```env
+STEADFAST_USER=your_email
+STEADFAST_PASSWORD=your_password
+PATHAO_USER=your_email
+PATHAO_PASSWORD=your_password
+REDX_PHONE=01XXXXXXXXX
+REDX_PASSWORD=your_password
+PAPERFLY_USER=your_username
+PAPERFLY_PASSWORD=your_password
+CARRYBEE_PHONE=01XXXXXXXXX
+CARRYBEE_PASSWORD=your_password
+```
+
+---
+
+### Netlify
+
+**1. Install the Netlify CLI**
+
+```bash
+npm install -g netlify-cli
+```
+
+**2. Login**
+
+```bash
+netlify login
+```
+
+**3. Deploy**
+
+```bash
+netlify deploy
+```
+
+For production:
+
+```bash
+netlify deploy --prod
+```
+
+---
+
+### Railway
+
+```bash
+npm install -g @railway/cli
+railway login
+railway up
+```
+
+---
+
+### Docker
+
+Build the image:
+
+```bash
+docker build -t fraud-checker-bd-courier .
+```
+
+Run it:
+
+```bash
+docker run -p 3000:3000 fraud-checker-bd-courier
+```
+
+---
+
+### One-click Deploy
+
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
+
+---
+
+### Supported Platforms
+
+- ✅ Cloudflare Workers (Recommended)
+- ✅ Vercel
+- ✅ Netlify
+- ✅ Railway
+- ✅ Docker
 
 ---
 
