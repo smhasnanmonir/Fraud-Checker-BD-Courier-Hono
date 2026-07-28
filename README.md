@@ -223,17 +223,29 @@ railway up
 
 ### Docker
 
-Build the image:
+**Quick start with Docker Compose:**
 
 ```bash
+docker compose up -d
+```
+
+**Or build and run manually:**
+
+```bash
+# Build the image
 docker build -t fraud-checker-bd-courier .
+
+# Run the container
+docker run -p 3000:3000 --env-file .env fraud-checker-bd-courier
 ```
 
-Run it:
+The Docker image uses a multi-stage build for minimal size and runs as a non-root user for security.
 
-```bash
-docker run -p 3000:3000 fraud-checker-bd-courier
-```
+**Features:**
+- Multi-stage build (deps → build → production)
+- Non-root user (`appuser`)
+- Built-in health check (`/health` endpoint)
+- `.dockerignore` excludes dev files
 
 ---
 
@@ -254,6 +266,24 @@ docker run -p 3000:3000 fraud-checker-bd-courier
 - ✅ Netlify
 - ✅ Railway
 - ✅ Docker
+
+---
+
+## 🔄 CI/CD
+
+GitHub Actions workflows run automatically on push/PR to `main`:
+
+| Workflow | What it does |
+|----------|-------------|
+| **CI** (`ci.yml`) | Runs TypeScript lint, tests, and build |
+| **Docker Publish** (`docker-publish.yml`) | Builds and pushes Docker image to GitHub Container Registry (GHCR) |
+
+**Docker image:**
+
+```bash
+# Pull from GHCR
+docker pull ghcr.io/smhasnanmonir/fraud-checker-bd-courier:main
+```
 
 ---
 

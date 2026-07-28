@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tests
+tests/
+coverage/
+*.test.ts
+*.spec.ts
+
+# Documentation
+README.md
+LICENSE
+
+# Pi agent
+.pi/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
