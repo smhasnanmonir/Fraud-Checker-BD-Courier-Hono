@@ -1,6 +1,6 @@
 // ============================================================
 // Application Entry Point
-// Starts the Hono server
+// Starts the Hono server.
 // ============================================================
 
 import { serve } from '@hono/node-server';
@@ -9,7 +9,7 @@ import { logger } from './shared/logger/logger.js';
 
 const PORT = Number(process.env.PORT) || 3000;
 
-logger.info('Starting Fraud Checker BD Courier API...');
+logger.info('Starting Fraud Checker BD Courier API v1...');
 
 serve(
   {
@@ -18,8 +18,9 @@ serve(
   },
   (info: { port: number }) => {
     logger.info(`🚀 Fraud Checker API running on http://localhost:${info.port}`);
-    logger.info(`   GET /check/:phone          — Check all couriers`);
-    logger.info(`   GET /check/:phone/:courier — Check single courier`);
-    logger.info(`   GET /health                — Health check`);
+    logger.info('   GET  /api/v1/fraud-reports/:phone[?couriers=...]');
+    logger.info('   GET  /api/v1/couriers/:courier/fraud-reports/:phone');
+    logger.info('   GET  /api/v1/health/live');
+    logger.info('   GET  /api/v1/health/ready');
   },
 );

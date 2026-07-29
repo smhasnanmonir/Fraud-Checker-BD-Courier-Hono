@@ -1,10 +1,16 @@
 // ============================================================
 // Fraud Schema Tests
-// Tests for Zod schemas used in fraud module
 // ============================================================
 
 import { describe, it, expect } from 'vitest';
-import { phoneParamSchema, courierParamSchema, fraudReportSchema } from '../../../src/modules/fraud/schemas/fraud.schema.js';
+import {
+  courierStatsSchema,
+  fraudReportQuerySchema,
+  fraudReportSchema,
+  phoneParamSchema,
+  reportMetaSchema,
+  singleCourierReportSchema,
+} from '../../../src/modules/fraud/schemas/fraud.schema.js';
 
 describe('phoneParamSchema', () => {
   it('should accept valid phone', () => {
@@ -17,88 +23,140 @@ describe('phoneParamSchema', () => {
   });
 });
 
-describe('courierParamSchema', () => {
-  it('should accept valid phone + courier', () => {
-    const result = courierParamSchema.parse({
-      phone: '01712345678',
-      courier: 'steadfast',
-    });
-    expect(result.courier).toBe('steadfast');
+describe('fraudReportQuerySchema', () => {
+  it('should accept missing couriers (defaults to empty array)', () => {
+    const result = fraudReportQuerySchema.parse({});
+    expect(result.couriers ?? []).toEqual([]);
   });
 
-  it('should accept all courier names', () => {
-    const couriers = ['steadfast', 'pathao', 'redx', 'paperfly', 'carrybee'] as const;
-    for (const courier of couriers) {
-      const result = courierParamSchema.parse({ phone: '01712345678', courier });
-      expect(result.courier).toBe(courier);
-    }
+  it('should parse comma-separated courier names', () => {
+    const result = fraudReportQuerySchema.parse({ couriers: 'pathao,redx' });
+    expect(result.couriers).toEqual(['pathao', 'redx']);
   });
 
   it('should reject unknown courier', () => {
-    expect(() =>
-      courierParamSchema.parse({ phone: '01712345678', courier: 'unknown' }),
-    ).toThrow();
+    expect(() => fraudReportQuerySchema.parse({ couriers: 'unknown' })).toThrow();
+  });
+});
+
+describe('courierStatsSchema', () => {
+  it('should accept valid courier stats', () => {
+    const ok = courierStatsSchema.parse({
+      success: 5,
+      cancel: 2,
+      total: 7,
+      successRatio: 71.43,
+    });
+    expect(ok.success).toBe(5);
+  });
+
+  it('should accept errorCode', () => {
+    const ok = courierStatsSchema.parse({
+      success: 0,
+      cancel: 0,
+      total: 0,
+      successRatio: 0,
+      errorCode: 'COURIER_UNAVAILABLE',
+    });
+    expect(ok.errorCode).toBe('COURIER_UNAVAILABLE');
+  });
+});
+
+describe('reportMetaSchema', () => {
+  it('should accept a valid meta', () => {
+    const ok = reportMetaSchema.parse({
+      partial: false,
+      succeeded: 5,
+      failed: 0,
+      failedCouriers: [],
+      generatedAt: new Date().toISOString(),
+    });
+    expect(ok.succeeded).toBe(5);
   });
 });
 
 describe('fraudReportSchema', () => {
-  it('should accept valid fraud report', () => {
+  it('should accept a valid fraud report with all couriers', () => {
     const report = {
-      steadfast: { success: 3, cancel: 1, total: 4, success_ratio: 75.0 },
-      pathao: { success: 5, cancel: 2, total: 7, success_ratio: 71.43 },
-      redx: { success: 20, cancel: 5, total: 25, success_ratio: 80.0 },
-      paperfly: { success: 0, cancel: 0, total: 1, success_ratio: 0 },
-      carrybee: { success: 10, cancel: 0, total: 10, success_ratio: 100.0 },
+      couriers: {
+        steadfast: { success: 3, cancel: 1, total: 4, successRatio: 75 },
+        pathao: { success: 5, cancel: 2, total: 7, successRatio: 71.43 },
+        redx: { success: 20, cancel: 5, total: 25, successRatio: 80 },
+        paperfly: null,
+        carrybee: { success: 10, cancel: 0, total: 10, successRatio: 100 },
+      },
       aggregate: {
-        total_success: 38,
-        total_cancel: 8,
-        total_deliveries: 47,
-        success_ratio: 80.85,
-        cancel_ratio: 17.02,
+        totalSuccess: 38,
+        totalCancel: 8,
+        totalDeliveries: 47,
+        successRatio: 80.85,
+        cancelRatio: 17.02,
       },
     };
     expect(() => fraudReportSchema.parse(report)).not.toThrow();
   });
 
-  it('should accept null courier results', () => {
+  it('should accept aggregate with null ratios (partial data)', () => {
     const report = {
-      steadfast: null,
-      pathao: null,
-      redx: null,
-      paperfly: null,
-      carrybee: null,
+      couriers: {
+        steadfast: null,
+        pathao: null,
+        redx: null,
+        paperfly: null,
+        carrybee: null,
+      },
       aggregate: {
-        total_success: 0,
-        total_cancel: 0,
-        total_deliveries: 0,
-        success_ratio: 0,
-        cancel_ratio: 0,
+        totalSuccess: 0,
+        totalCancel: 0,
+        totalDeliveries: 0,
+        successRatio: null,
+        cancelRatio: null,
       },
     };
     expect(() => fraudReportSchema.parse(report)).not.toThrow();
   });
 
-  it('should accept courier with error', () => {
+  it('should accept a courier with errorCode', () => {
     const report = {
-      steadfast: {
-        success: 0,
-        cancel: 0,
-        total: 0,
-        success_ratio: 0,
-        error: 'Login failed',
+      couriers: {
+        steadfast: {
+          success: 0,
+          cancel: 0,
+          total: 0,
+          successRatio: 0,
+          errorCode: 'COURIER_AUTH_FAILED',
+        },
+        pathao: null,
+        redx: null,
+        paperfly: null,
+        carrybee: null,
       },
-      pathao: null,
-      redx: null,
-      paperfly: null,
-      carrybee: null,
       aggregate: {
-        total_success: 0,
-        total_cancel: 0,
-        total_deliveries: 0,
-        success_ratio: 0,
-        cancel_ratio: 0,
+        totalSuccess: 0,
+        totalCancel: 0,
+        totalDeliveries: 0,
+        successRatio: null,
+        cancelRatio: null,
       },
     };
     expect(() => fraudReportSchema.parse(report)).not.toThrow();
+  });
+});
+
+describe('singleCourierReportSchema', () => {
+  it('should accept a valid single-courier report', () => {
+    const report = {
+      courier: 'pathao',
+      phone: '01712345678',
+      result: { success: 5, cancel: 2, total: 7, successRatio: 71.43 },
+      meta: {
+        partial: false,
+        succeeded: 1,
+        failed: 0,
+        failedCouriers: [],
+        generatedAt: new Date().toISOString(),
+      },
+    };
+    expect(() => singleCourierReportSchema.parse(report)).not.toThrow();
   });
 });

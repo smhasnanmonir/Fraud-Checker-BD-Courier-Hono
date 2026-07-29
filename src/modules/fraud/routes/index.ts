@@ -1,1 +1,1 @@
-export { default as fraudRoutes } from './fraud.routes.js';
+export { fraudRoutes, fraudSingleRoutes, _internal } from './fraud.routes.js';

@@ -50,8 +50,8 @@ describe('RedxService', () => {
     expect(result.success).toBe(20);
     expect(result.total).toBe(25);
     expect(result.cancel).toBe(3);
-    expect(result.success_ratio).toBe(80);
-    expect(result.error).toBeUndefined();
+    expect(result.successRatio).toBe(80);
+    expect(result.errorCode).toBeUndefined();
   });
 
   it('should use cached token on second call', async () => {
@@ -100,7 +100,7 @@ describe('RedxService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
+    expect(result.errorCode).toBeDefined();
     expect(result.success).toBe(0);
   });
 

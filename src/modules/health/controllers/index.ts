@@ -1,1 +1,1 @@
-export { healthCheck } from './health.controller.js';
+export { liveness, readiness } from './health.controller.js';

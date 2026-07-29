@@ -1,14 +1,14 @@
 // ============================================================
-// Fraud Routes Integration Tests
-// Full HTTP tests via Hono app.request()
+// Fraud Routes Integration Tests (v1)
+// Full HTTP tests against the real Hono app.
+// Verifies: routing, error shape, status codes, caching headers,
+// request-id echo, partial-failure meta, 404 behaviour.
 // ============================================================
 
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { zValidator } from '@hono/zod-validator';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// Mock config BEFORE any app import
+const mockGetDeliveryStats = vi.fn();
+
 vi.mock('../../../src/config/env.js', () => ({
   config: {
     steadfast: { email: 'test@test.com', password: 'testpass' },
@@ -16,11 +16,10 @@ vi.mock('../../../src/config/env.js', () => ({
     redx: { phone: '01712345678', password: 'testpass' },
     paperfly: { username: 'testuser', password: 'testpass' },
     carrybee: { phone: '01712345678', password: 'testpass' },
+    allowedOrigins: ['*'],
+    rateLimitPerMinute: 1000,
   },
 }));
-
-// Mock all services to avoid real HTTP calls
-const mockGetDeliveryStats = vi.fn();
 
 vi.mock('../../../src/modules/fraud/services/steadfast/steadfast.service.js', () => ({
   SteadfastService: vi.fn().mockImplementation(() => ({
@@ -28,28 +27,24 @@ vi.mock('../../../src/modules/fraud/services/steadfast/steadfast.service.js', ()
     getDeliveryStats: mockGetDeliveryStats,
   })),
 }));
-
 vi.mock('../../../src/modules/fraud/services/pathao/pathao.service.js', () => ({
   PathaoService: vi.fn().mockImplementation(() => ({
     name: 'pathao',
     getDeliveryStats: mockGetDeliveryStats,
   })),
 }));
-
 vi.mock('../../../src/modules/fraud/services/redx/redx.service.js', () => ({
   RedxService: vi.fn().mockImplementation(() => ({
     name: 'redx',
     getDeliveryStats: mockGetDeliveryStats,
   })),
 }));
-
 vi.mock('../../../src/modules/fraud/services/paperfly/paperfly.service.js', () => ({
   PaperflyService: vi.fn().mockImplementation(() => ({
     name: 'paperfly',
     getDeliveryStats: mockGetDeliveryStats,
   })),
 }));
-
 vi.mock('../../../src/modules/fraud/services/carrybee/carrybee.service.js', () => ({
   CarrybeeService: vi.fn().mockImplementation(() => ({
     name: 'carrybee',
@@ -57,180 +52,191 @@ vi.mock('../../../src/modules/fraud/services/carrybee/carrybee.service.js', () =
   })),
 }));
 
-// Import AFTER mocks
-import { phoneParamSchema, courierParamSchema } from '../../../src/modules/fraud/schemas/fraud.schema.js';
-import { checkAllCouriers, checkSingleCourier } from '../../../src/modules/fraud/controllers/fraud.controller.js';
-import { healthCheck } from '../../../src/modules/health/controllers/health.controller.js';
-import { successResponse, errorResponse } from '../../../src/shared/response/response.js';
-import { ZodError } from 'zod';
+import { app } from '../../../src/app.js';
 
-// Build a minimal app for integration testing
-function createTestApp() {
-  const app = new Hono();
-  app.use('*', cors());
-
-  // Fraud routes
-  app.get(
-    '/check/:phone',
-    zValidator('param', phoneParamSchema, (result, c) => {
-      if (!result.success) {
-        return c.json(errorResponse('Invalid phone number', result.error.issues), 400);
-      }
-    }),
-    async (c) => {
-      try {
-        const { phone } = c.req.valid('param');
-        const report = await checkAllCouriers(phone);
-        return c.json(successResponse(report));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Internal server error';
-        return c.json(errorResponse(message), 500);
-      }
-    },
-  );
-
-  app.get(
-    '/check/:phone/:courier',
-    zValidator('param', courierParamSchema, (result, c) => {
-      if (!result.success) {
-        return c.json(errorResponse('Invalid parameters', result.error.issues), 400);
-      }
-    }),
-    async (c) => {
-      try {
-        const { phone, courier } = c.req.valid('param');
-        const result = await checkSingleCourier(phone, courier);
-        return c.json(successResponse(result));
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Internal server error';
-        return c.json(errorResponse(message), 500);
-      }
-    },
-  );
-
-  // Health route
-  app.get('/health', (c) => {
-    return c.json(successResponse(healthCheck()));
+describe('Integration: /api/v1', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetDeliveryStats.mockResolvedValue({
+      success: 5,
+      cancel: 1,
+      total: 6,
+      successRatio: 83.33,
+    });
   });
 
-  // 404 fallback
-  app.notFound((c) => {
-    return c.json(errorResponse(`Route ${c.req.method} ${c.req.path} not found`), 404);
-  });
+  // ─────────────────────────────────────────────────────────
+  // GET /api/v1/fraud-reports/:phone
+  // ─────────────────────────────────────────────────────────
+  describe('GET /api/v1/fraud-reports/:phone', () => {
+    it('should return 200 with success body and ETag/Cache-Control', async () => {
+      const res = await app.request('/api/v1/fraud-reports/01712345678');
+      const body = await res.json();
 
-  // Global error handler
-  app.onError((err, c) => {
-    if (err instanceof ZodError) {
-      return c.json(errorResponse('Validation failed', err.errors), 400);
-    }
-    const message = err instanceof Error ? err.message : 'Internal server error';
-    return c.json(errorResponse(message), 500);
-  });
-
-  return app;
-}
-
-let app: ReturnType<typeof createTestApp>;
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockGetDeliveryStats.mockResolvedValue({
-    success: 5,
-    cancel: 1,
-    total: 6,
-    success_ratio: 83.33,
-  });
-  app = createTestApp();
-});
-
-describe('GET /check/:phone', () => {
-  it('should return 200 with fraud report for valid phone', async () => {
-    const res = await app.request('/check/01712345678');
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(body.data).toBeDefined();
-    expect(body.data.steadfast).toBeDefined();
-    expect(body.data.pathao).toBeDefined();
-    expect(body.data.redx).toBeDefined();
-    expect(body.data.paperfly).toBeDefined();
-    expect(body.data.carrybee).toBeDefined();
-    expect(body.data.aggregate).toBeDefined();
-  });
-
-  it('should return 400 for invalid phone number', async () => {
-    const res = await app.request('/check/invalid');
-    const body = await res.json();
-
-    expect(res.status).toBe(400);
-    expect(body.success).toBe(false);
-  });
-
-  it('should return 200 for phone with +880 prefix (normalized server-side)', async () => {
-    const res = await app.request('/check/+8801712345678');
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-  });
-
-  it('should return 400 for too short phone', async () => {
-    const res = await app.request('/check/017123');
-    const body = await res.json();
-
-    expect(res.status).toBe(400);
-    expect(body.success).toBe(false);
-  });
-});
-
-describe('GET /check/:phone/:courier', () => {
-  it('should return 200 for valid single courier check', async () => {
-    const res = await app.request('/check/01712345678/pathao');
-    const body = await res.json();
-
-    expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(body.data.courier).toBe('pathao');
-    expect(body.data.phone).toBe('01712345678');
-    expect(body.data.result).toBeDefined();
-  });
-
-  it('should return 400 for invalid courier name', async () => {
-    const res = await app.request('/check/01712345678/unknown');
-    const body = await res.json();
-
-    expect(res.status).toBe(400);
-    expect(body.success).toBe(false);
-  });
-
-  it('should accept all valid courier names', async () => {
-    const couriers = ['steadfast', 'pathao', 'redx', 'paperfly', 'carrybee'];
-    for (const courier of couriers) {
-      const res = await app.request(`/check/01712345678/${courier}`);
       expect(res.status).toBe(200);
-    }
+      expect(body.success).toBe(true);
+      expect(body.data.couriers).toBeDefined();
+      expect(body.data.aggregate).toBeDefined();
+      expect(body.meta).toBeDefined();
+      expect(body.meta.succeeded).toBe(5);
+      expect(body.meta.partial).toBe(false);
+      expect(res.headers.get('ETag')).toMatch(/^W\/"[a-f0-9]+"$/);
+      expect(res.headers.get('Cache-Control')).toContain('private');
+      expect(res.headers.get('X-Request-Id')).toBeTruthy();
+    });
+
+    it('should normalize +880 prefix', async () => {
+      const res = await app.request('/api/v1/fraud-reports/+8801712345678');
+      expect(res.status).toBe(200);
+    });
+
+    it('should return 400 with INVALID_INPUT code + field details for bad phone', async () => {
+      const res = await app.request('/api/v1/fraud-reports/invalid');
+      const body = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(body.success).toBe(false);
+      expect(body.error.code).toBe('INVALID_INPUT');
+      expect(body.error.details).toBeDefined();
+      expect(body.error.details[0].field).toBe('phone');
+      expect(body.error.requestId).toBeTruthy();
+    });
+
+    it('should return 400 for invalid query courier', async () => {
+      const res = await app.request('/api/v1/fraud-reports/01712345678?couriers=unknown');
+      const body = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(body.error.code).toBe('INVALID_INPUT');
+    });
+
+    it('should respect ?couriers=pathao,redx filter', async () => {
+      const res = await app.request('/api/v1/fraud-reports/01712345678?couriers=pathao,redx');
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.data.couriers.pathao).not.toBeNull();
+      expect(body.data.couriers.redx).not.toBeNull();
+      expect(body.data.couriers.steadfast).toBeNull();
+    });
+
+    it('should honour If-None-Match with 304', async () => {
+      const first = await app.request('/api/v1/fraud-reports/01712345678');
+      const etag = first.headers.get('ETag');
+      expect(etag).toBeTruthy();
+
+      const second = await app.request('/api/v1/fraud-reports/01712345678', {
+        headers: { 'If-None-Match': etag! },
+      });
+      expect(second.status).toBe(304);
+    });
+
+    it('should echo client-provided X-Request-Id when valid', async () => {
+      const res = await app.request('/api/v1/fraud-reports/01712345678', {
+        headers: { 'X-Request-Id': 'my-trace-123' },
+      });
+      expect(res.headers.get('X-Request-Id')).toBe('my-trace-123');
+    });
+
+    it('should set partial=true when any courier returns errorCode', async () => {
+      let n = 0;
+      mockGetDeliveryStats.mockImplementation(async () => {
+        n++;
+        if (n === 3) {
+          return { success: 0, cancel: 0, total: 0, successRatio: 0, errorCode: 'COURIER_TIMEOUT' };
+        }
+        return { success: 1, cancel: 0, total: 1, successRatio: 100 };
+      });
+
+      const res = await app.request('/api/v1/fraud-reports/01712345678');
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.meta.partial).toBe(true);
+      expect(body.meta.failed).toBe(1);
+      expect(body.meta.failedCouriers).toContain('redx');
+      expect(body.data.aggregate.successRatio).toBeNull();
+    });
   });
-});
 
-describe('GET /health', () => {
-  it('should return 200 with health status', async () => {
-    const res = await app.request('/health');
-    const body = await res.json();
+  // ─────────────────────────────────────────────────────────
+  // GET /api/v1/couriers/:courier/fraud-reports/:phone
+  // ─────────────────────────────────────────────────────────
+  describe('GET /api/v1/couriers/:courier/fraud-reports/:phone', () => {
+    it('should return 200 with the courier-specific report', async () => {
+      const res = await app.request('/api/v1/couriers/pathao/fraud-reports/01712345678');
+      const body = await res.json();
 
-    expect(res.status).toBe(200);
-    expect(body.success).toBe(true);
-    expect(body.data.status).toBe('ok');
-    expect(body.data.version).toBe('1.0.0');
+      expect(res.status).toBe(200);
+      expect(body.data.courier).toBe('pathao');
+      expect(body.data.phone).toBe('01712345678');
+      expect(body.data.result).toBeDefined();
+    });
+
+    it('should return 404 with field details for unknown courier', async () => {
+      const res = await app.request('/api/v1/couriers/unknown/fraud-reports/01712345678');
+      const body = await res.json();
+
+      expect(res.status).toBe(404);
+      expect(body.error.code).toBe('NOT_FOUND');
+      expect(body.error.details[0].field).toBe('courier');
+    });
+
+    it('should return 503 with COURIER_UNAVAILABLE when service errors', async () => {
+      mockGetDeliveryStats.mockResolvedValue({
+        success: 0,
+        cancel: 0,
+        total: 0,
+        successRatio: 0,
+        errorCode: 'COURIER_UNAVAILABLE',
+      });
+
+      const res = await app.request('/api/v1/couriers/pathao/fraud-reports/01712345678');
+      const body = await res.json();
+
+      expect(res.status).toBe(503);
+      expect(body.error.code).toBe('COURIER_UNAVAILABLE');
+      expect(body.error.meta.errorCode).toBe('COURIER_UNAVAILABLE');
+    });
+
+    it('should return 400 for invalid phone', async () => {
+      const res = await app.request('/api/v1/couriers/pathao/fraud-reports/bad');
+      expect(res.status).toBe(400);
+    });
   });
-});
 
-describe('404 handling', () => {
-  it('should return 404 for unknown routes', async () => {
-    const res = await app.request('/unknown');
-    const body = await res.json();
+  // ─────────────────────────────────────────────────────────
+  // Health endpoints
+  // ─────────────────────────────────────────────────────────
+  describe('Health', () => {
+    it('GET /api/v1/health/live returns 200', async () => {
+      const res = await app.request('/api/v1/health/live');
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.status).toBe('ok');
+      expect(res.headers.get('Cache-Control')).toBe('no-store');
+    });
 
-    expect(res.status).toBe(404);
-    expect(body.success).toBe(false);
+    it('GET /api/v1/health/ready returns 200 with dependency status', async () => {
+      const res = await app.request('/api/v1/health/ready');
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.dependencies).toBeDefined();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────
+  // 404 + unknown routes
+  // ─────────────────────────────────────────────────────────
+  describe('404 handling', () => {
+    it('should return 404 with NOT_FOUND code and requestId for unknown routes', async () => {
+      const res = await app.request('/api/v1/does-not-exist');
+      const body = await res.json();
+
+      expect(res.status).toBe(404);
+      expect(body.error.code).toBe('NOT_FOUND');
+      expect(body.error.message).toBe('Resource not found');
+      expect(body.error.requestId).toBeTruthy();
+    });
   });
 });

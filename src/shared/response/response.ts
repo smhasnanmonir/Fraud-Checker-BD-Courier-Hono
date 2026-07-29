@@ -1,25 +1,50 @@
 // ============================================================
 // Consistent API Response Helpers
-// Ensures every response follows { success, data/message } shape
+// All success/error bodies flow through here so the wire format
+// stays identical across modules.
 // ============================================================
 
-import type { SuccessResponse, ErrorResponse } from '../../types/index.js';
+import type {
+  ApiErrorBody,
+  ErrorCode,
+  ErrorResponse,
+  FieldError,
+  SuccessResponse,
+} from '../../types/index.js';
 
-/**
- * Build a success response.
- * Matches PHP package's structural response format.
- */
-export function successResponse<T>(data: T): SuccessResponse<T> {
-  return { success: true, data };
+interface ErrorOptions {
+  code: ErrorCode;
+  details?: FieldError[];
+  requestId?: string;
+  meta?: Record<string, unknown>;
 }
 
-/**
- * Build an error response.
- */
-export function errorResponse(message: string, errors?: unknown[]): ErrorResponse {
-  const resp: ErrorResponse = { success: false, message };
-  if (errors && errors.length > 0) {
-    resp.errors = errors;
-  }
-  return resp;
+/** Build a success response. Optionally attach `meta` for partial-failure signal etc. */
+export function successResponse<T>(data: T, meta?: Record<string, unknown>): SuccessResponse<T> {
+  return meta !== undefined ? { success: true, data, meta } : { success: true, data };
+}
+
+/** Build an error response with machine-readable code + optional field details. */
+export function errorResponse(message: string, options: ErrorOptions): ErrorResponse {
+  const body: ApiErrorBody = {
+    code: options.code,
+    message,
+  };
+  if (options.details && options.details.length > 0) body.details = options.details;
+  if (options.requestId) body.requestId = options.requestId;
+  if (options.meta) body.meta = options.meta;
+  return { success: false, error: body };
+}
+
+/** Map a Zod issue to a frontend-friendly field error. Path joins with `.`. */
+export function zodIssueToFieldError(issue: {
+  path: (string | number)[];
+  code: string;
+  message: string;
+}): FieldError {
+  return {
+    field: issue.path.join('.') || '(root)',
+    code: issue.code,
+    message: issue.message,
+  };
 }

@@ -51,7 +51,7 @@ describe('PaperflyService', () => {
     expect(result.success).toBe(5);
     expect(result.cancel).toBe(2);
     expect(result.total).toBe(10);
-    expect(result.error).toBeUndefined();
+    expect(result.errorCode).toBeUndefined();
   });
 
   it('should use cached token on second call', async () => {
@@ -98,7 +98,7 @@ describe('PaperflyService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
+    expect(result.errorCode).toBeDefined();
     expect(result.success).toBe(0);
   });
 

@@ -1,10 +1,5 @@
 // ============================================================
 // RedX Courier Service
-// Replaces PHP: src/Services/RedxService.php
-//
-// Auth flow: REST token + in-memory caching (50 min TTL)
-// 1. POST /v4/auth/login → get accessToken (cached)
-// 2. GET fraud data with Bearer token
 // ============================================================
 
 import type { DeliveryResult } from '../../../../types/index.js';
@@ -12,15 +7,13 @@ import { httpRequest } from '../../../../shared/http/http.js';
 import { cache } from '../../../../shared/cache/cache.js';
 import { config } from '../../../../config/index.js';
 import { checkBdMobile } from '../../../../shared/validator/validator.js';
-import { BaseCourierService } from '../base/base-courier.service.js';
+import { BaseCourierService, UpstreamHttpError } from '../base/base-courier.service.js';
 
 const CACHE_KEY = 'redx_access_token';
-const CACHE_TTL_MS = 50 * 60 * 1000; // 50 minutes
+const CACHE_TTL_MS = 50 * 60 * 1000;
 
 interface RedxLoginResponse {
-  data?: {
-    accessToken?: string;
-  };
+  data?: { accessToken?: string };
 }
 
 interface RedxFraudResponse {
@@ -42,54 +35,30 @@ export class RedxService extends BaseCourierService {
     super();
     this.phone = config.redx.phone;
     this.password = config.redx.password;
-
-    // Validate the configured phone number only if configured
-    if (this.phone) {
-      checkBdMobile(this.phone);
-    }
+    if (this.phone) checkBdMobile(this.phone);
   }
 
-  /**
-   * Get or create a valid RedX access token.
-   * Uses in-memory cache to avoid hitting login rate limits.
-   */
   private async getAccessToken(): Promise<string | null> {
-    // Check cache first
     const cached = cache.get<string>(CACHE_KEY);
     if (cached) return cached;
 
-    // Request new token
     const response = await httpRequest('https://api.redx.com.bd/v4/auth/login', {
       method: 'POST',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         Accept: 'application/json, text/plain, */*',
       },
-      body: {
-        phone: `88${this.phone}`,
-        password: this.password,
-      },
+      body: { phone: `88${this.phone}`, password: this.password },
     });
-
     if (!response.ok) return null;
-
-    const data = response.json<RedxLoginResponse>();
-    const token = data.data?.accessToken;
-
-    if (token) {
-      cache.set(CACHE_KEY, token, CACHE_TTL_MS);
-    }
-
+    const token = response.json<RedxLoginResponse>().data?.accessToken;
+    if (token) cache.set(CACHE_KEY, token, CACHE_TTL_MS);
     return token ?? null;
   }
 
-  /**
-   * Fetch delivery statistics from RedX for the given phone number.
-   */
   async getDeliveryStats(queryPhone: string): Promise<DeliveryResult> {
-    // Skip if credentials not configured
     if (!this.phone || !this.password) {
-      return this.handleError('Config', new Error('RedX credentials not configured'));
+      return this.handleError(new Error('RedX credentials not configured'), { context: 'Config' });
     }
 
     try {
@@ -97,7 +66,7 @@ export class RedxService extends BaseCourierService {
 
       const accessToken = await this.getAccessToken();
       if (!accessToken) {
-        return this.handleError('Login', new Error('Failed to get access token from RedX'));
+        throw new UpstreamHttpError('Failed to obtain RedX access token', 401);
       }
 
       const response = await httpRequest(
@@ -111,34 +80,24 @@ export class RedxService extends BaseCourierService {
           },
         },
       );
-
       if (response.status === 401) {
-        // Token expired — evict cache
         cache.delete(CACHE_KEY);
-        return this.handleError('Auth', new Error('RedX access token expired'));
+        throw new UpstreamHttpError('RedX token expired', 401);
       }
-
       if (!response.ok) {
-        return this.handleError('Fetch', new Error(`RedX API returned ${response.status}`));
+        throw new UpstreamHttpError(`RedX stats: ${response.status}`, response.status);
       }
 
-      const data = response.json<RedxFraudResponse>();
-      const parcelData = data.data;
-
+      const parcelData = response.json<RedxFraudResponse>().data;
       const total = Number(parcelData?.totalParcel) || 0;
       const success = Number(parcelData?.deliveredParcel) || 0;
       const cancel =
         Number(parcelData?.returnedParcel) || Number(parcelData?.cancelParcel) || Math.max(0, total - success);
       const successRatio = this.calculateRatio(success, total);
 
-      return {
-        success,
-        cancel,
-        total,
-        success_ratio: successRatio,
-      };
+      return { success, cancel, total, successRatio };
     } catch (error) {
-      return this.handleError('getDeliveryStats', error);
+      return this.handleError(error);
     }
   }
 }

@@ -49,8 +49,8 @@ describe('PathaoService', () => {
     expect(result.success).toBe(5);
     expect(result.total).toBe(7);
     expect(result.cancel).toBe(2);
-    expect(result.success_ratio).toBe(71.43);
-    expect(result.error).toBeUndefined();
+    expect(result.successRatio).toBe(71.43);
+    expect(result.errorCode).toBeUndefined();
   });
 
   it('should handle login failure', async () => {
@@ -64,7 +64,7 @@ describe('PathaoService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
+    expect(result.errorCode).toBeDefined();
     expect(result.success).toBe(0);
     expect(result.total).toBe(0);
   });
@@ -80,7 +80,7 @@ describe('PathaoService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
-    expect(result.error).toBe('Courier service unavailable');
+    expect(result.errorCode).toBeDefined();
+    expect(result.errorCode).toBe('COURIER_UNAVAILABLE');
   });
 });

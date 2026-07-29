@@ -1,54 +1,53 @@
 // ============================================================
 // Fraud Module — Mapper
-// Transforms raw service results into DTOs
+// Transforms raw service DeliveryResult into the wire DTO.
+// SECURITY: never leaks upstream courier strings or HTTP status;
+// only the typed `errorCode` is exposed.
 // ============================================================
 
-import type { DeliveryResult, FraudReport, CourierName } from '../../../types/index.js';
-import type { FraudReportDto, SingleCourierCheckDto, CourierResultDto } from '../dtos/fraud.dto.js';
+import type { CourierErrorCode, CourierName, DeliveryResult } from '../../../types/index.js';
+import type { CourierStatsDto, FraudReportDto, SingleCourierCheckDto } from '../dtos/fraud.dto.js';
 
-/**
- * Map raw service DeliveryResult to API-facing CourierResultDto.
- */
-export function toCourierResultDto(courier: CourierName, result: DeliveryResult | null): CourierResultDto {
+/** Default code when a courier returned no data (catch-all). */
+const DEFAULT_ERROR_CODE: CourierErrorCode = 'COURIER_UNAVAILABLE';
+
+/** Map raw DeliveryResult to API-facing CourierStatsDto. */
+export function toCourierStatsDto(
+  _courier: CourierName,
+  result: DeliveryResult | null,
+): CourierStatsDto {
   if (!result) {
     return {
-      courier,
       success: 0,
       cancel: 0,
       total: 0,
-      success_ratio: 0,
-      error: 'Service unavailable',
+      successRatio: 0,
+      errorCode: DEFAULT_ERROR_CODE,
     };
   }
-
-  return {
-    courier,
+  const dto: CourierStatsDto = {
     success: result.success,
     cancel: result.cancel,
     total: result.total,
-    success_ratio: result.success_ratio,
-    ...(result.error ? { error: result.error } : {}),
+    successRatio: result.successRatio,
   };
+  if (result.errorCode) dto.errorCode = result.errorCode;
+  return dto;
 }
 
-/**
- * Map raw FraudReport from service to FraudReportDto for API response.
- * The shapes are identical — this exists as a deliberate transformation boundary.
- */
-export function toFraudReportDto(report: FraudReport): FraudReportDto {
-  return {
-    steadfast: report.steadfast,
-    pathao: report.pathao,
-    redx: report.redx,
-    paperfly: report.paperfly,
-    carrybee: report.carrybee,
-    aggregate: report.aggregate,
-  };
+/** Map internal fraud report (per-courier map + aggregate) to API DTO. */
+export function toFraudReportDto(
+  report: Record<CourierName, DeliveryResult | null>,
+  aggregate: FraudReportDto['aggregate'],
+): FraudReportDto {
+  const couriers = {} as Record<CourierName, CourierStatsDto | null>;
+  (Object.keys(report) as CourierName[]).forEach((name) => {
+    couriers[name] = report[name] ? toCourierStatsDto(name, report[name]) : null;
+  });
+  return { couriers, aggregate };
 }
 
-/**
- * Map a single courier check result to its DTO.
- */
+/** Map a single courier check result to its DTO. */
 export function toSingleCourierCheckDto(
   courier: CourierName,
   phone: string,
@@ -57,6 +56,6 @@ export function toSingleCourierCheckDto(
   return {
     courier,
     phone,
-    result,
+    result: result ? toCourierStatsDto(courier, result) : null,
   };
 }

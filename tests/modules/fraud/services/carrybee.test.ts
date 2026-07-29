@@ -74,8 +74,8 @@ describe('CarrybeeService', () => {
     expect(result.success).toBe(10);
     expect(result.total).toBe(10);
     expect(result.cancel).toBe(0);
-    expect(result.success_ratio).toBe(100);
-    expect(result.error).toBeUndefined();
+    expect(result.successRatio).toBe(100);
+    expect(result.errorCode).toBeUndefined();
   });
 
   it('should handle CSRF failure', async () => {
@@ -89,8 +89,9 @@ describe('CarrybeeService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
-    expect(result.error).toBe('Courier service unavailable');
+    expect(result.errorCode).toBeDefined();
+    expect(result.errorCode).toBe('COURIER_UNAVAILABLE');
+
   });
 
   it('should handle 401 by evicting cache', async () => {
@@ -110,7 +111,7 @@ describe('CarrybeeService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
+    expect(result.errorCode).toBeDefined();
     expect(cache.get('carrybee_token_data')).toBeNull();
   });
 

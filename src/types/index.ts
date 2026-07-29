@@ -15,32 +15,45 @@ export const COURIER_NAMES: readonly CourierName[] = [
   'carrybee',
 ] as const;
 
+/** Tuple form for Zod enum derivation. */
+export const COURIER_NAME_TUPLE = [
+  'steadfast',
+  'pathao',
+  'redx',
+  'paperfly',
+  'carrybee',
+] as const satisfies readonly CourierName[];
+
 /** Core delivery stats returned by every courier service */
 export interface DeliveryStats {
   success: number;
   cancel: number;
   total: number;
-  success_ratio: number;
+  successRatio: number;
 }
 
 /** Extended result that may carry error info when a courier service fails */
-export interface DeliveryResult {
-  success: number;
-  cancel: number;
-  total: number;
-  success_ratio: number;
-  error?: string;
-  status?: number;
-  message?: string;
+export interface DeliveryResult extends DeliveryStats {
+  /** Set when this courier could not produce data. Maps to machine-readable code. */
+  errorCode?: CourierErrorCode;
 }
+
+/** Per-courier error code exposed in API responses (no upstream message leak). */
+export type CourierErrorCode =
+  | 'COURIER_UNAVAILABLE'
+  | 'COURIER_AUTH_FAILED'
+  | 'COURIER_RATE_LIMITED'
+  | 'COURIER_TIMEOUT'
+  | 'COURIER_CONFIG_MISSING';
 
 /** Aggregated stats across all couriers */
 export interface AggregateStats {
-  total_success: number;
-  total_cancel: number;
-  total_deliveries: number;
-  success_ratio: number;
-  cancel_ratio: number;
+  totalSuccess: number;
+  totalCancel: number;
+  totalDeliveries: number;
+  /** null when data is partial — ratios are not meaningful across partial sets */
+  successRatio: number | null;
+  cancelRatio: number | null;
 }
 
 /** Full fraud report — same shape as PHP FraudCheckerBdCourierManager::check() return */
@@ -93,18 +106,53 @@ export interface AppConfig {
 }
 
 // ============================================================
-// API Response Types
+// API Response Types (RFC-7807 inspired, not full compliance)
 // ============================================================
 
+/** Machine-readable error codes. Add to this enum, never reuse strings inline. */
+export type ErrorCode =
+  | 'INVALID_INPUT'
+  | 'INVALID_PHONE'
+  | 'INVALID_COURIER'
+  | 'NOT_FOUND'
+  | 'COURIER_UNAVAILABLE'
+  | 'UPSTREAM_ERROR'
+  | 'UNAUTHORIZED'
+  | 'FORBIDDEN'
+  | 'RATE_LIMITED'
+  | 'PAYLOAD_TOO_LARGE'
+  | 'TIMEOUT'
+  | 'INTERNAL_ERROR';
+
+/** A single field-level validation issue. */
+export interface FieldError {
+  field: string;
+  code: string;
+  message: string;
+}
+
+/** Error body shared across all error responses. */
+export interface ApiErrorBody {
+  code: ErrorCode;
+  message: string;
+  details?: FieldError[];
+  /** Echo of X-Request-Id for log correlation. */
+  requestId?: string;
+  /** Optional structured context (e.g. retry-after seconds). */
+  meta?: Record<string, unknown>;
+}
+
+/** Full JSON shape for any error response. */
+export interface ErrorResponse {
+  success: false;
+  error: ApiErrorBody;
+}
+
+/** Full JSON shape for any success response. */
 export interface SuccessResponse<T> {
   success: true;
   data: T;
-}
-
-export interface ErrorResponse {
-  success: false;
-  message: string;
-  errors?: unknown[];
+  meta?: Record<string, unknown>;
 }
 
 // ============================================================
@@ -112,13 +160,12 @@ export interface ErrorResponse {
 // ============================================================
 
 export interface HttpRequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   headers?: Record<string, string>;
-  body?: unknown;
+  body?: string | Record<string, unknown>;
   cookies?: Record<string, string>;
   followRedirects?: boolean;
   formUrlEncoded?: boolean;
-  /** Per-request timeout in milliseconds. 0 disables. Defaults to 15000. */
   timeoutMs?: number;
 }
 
@@ -130,4 +177,14 @@ export interface HttpResponse {
   text(): string;
   cookies: Record<string, string>;
   raw: Response;
+}
+
+// ============================================================
+// Hono context bindings
+// ============================================================
+
+/** Per-request context exposed via `c.var`. */
+export interface AppVariables {
+  /** Unique request id (read from X-Request-Id header or generated). */
+  requestId: string;
 }

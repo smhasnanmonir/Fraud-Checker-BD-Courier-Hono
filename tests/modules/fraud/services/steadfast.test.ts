@@ -81,8 +81,8 @@ describe('SteadfastService', () => {
     expect(result.success).toBe(3);
     expect(result.cancel).toBe(1);
     expect(result.total).toBe(4);
-    expect(result.success_ratio).toBe(75);
-    expect(result.error).toBeUndefined();
+    expect(result.successRatio).toBe(75);
+    expect(result.errorCode).toBeUndefined();
   });
 
   it('should handle CSRF token not found', async () => {
@@ -96,8 +96,8 @@ describe('SteadfastService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
-    expect(result.error).toBe('Courier service unavailable');
+    expect(result.errorCode).toBeDefined();
+    expect(result.errorCode).toBe('COURIER_UNAVAILABLE');
   });
 
   it('should handle login failure', async () => {
@@ -119,7 +119,7 @@ describe('SteadfastService', () => {
 
     const result = await service.getDeliveryStats('01712345678');
 
-    expect(result.error).toBeDefined();
-    expect(result.error).toBe('Courier service unavailable');
+    expect(result.errorCode).toBeDefined();
+    expect(result.errorCode).toBe('COURIER_AUTH_FAILED');
   });
 });

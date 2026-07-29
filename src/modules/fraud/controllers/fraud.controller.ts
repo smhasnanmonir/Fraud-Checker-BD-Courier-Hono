@@ -1,127 +1,140 @@
 // ============================================================
 // Fraud Controller
-// Thin controller — only reads validated data, calls services, returns response
-// Replaces PHP: FraudCheckerBdCourierManager::check()
+// Orchestrates services, builds aggregate stats, surfaces partial
+// failures via the meta block so the frontend can distinguish a
+// "100% success" reading from "100% from 1 of 5 couriers."
 // ============================================================
 
-import type { FraudReport, DeliveryResult } from '../../../types/index.js';
-import { COURIER_NAMES as ALL_COURIERS, type CourierName } from '../../../types/index.js';
+import type { CourierName, DeliveryResult } from '../../../types/index.js';
+import { COURIER_NAMES } from '../../../types/index.js';
 import { logger } from '../../../shared/logger/logger.js';
+import { CourierUnavailableError } from '../../../shared/errors/errors.js';
 import { toFraudReportDto, toSingleCourierCheckDto } from '../mappers/fraud.mapper.js';
 import type { FraudReportDto, SingleCourierCheckDto } from '../dtos/fraud.dto.js';
-import { CarrybeeService, PaperflyService, PathaoService, RedxService, SteadfastService } from '../services/index.js';
+import {
+  CarrybeeService,
+  PaperflyService,
+  PathaoService,
+  RedxService,
+  SteadfastService,
+} from '../services/index.js';
 
 // ── Service Registry ─────────────────────────────────────
-const serviceMap = {
+const serviceMap: Record<CourierName, () => SteadfastService | PathaoService | RedxService | PaperflyService | CarrybeeService> = {
   steadfast: () => new SteadfastService(),
   pathao: () => new PathaoService(),
   redx: () => new RedxService(),
   paperfly: () => new PaperflyService(),
   carrybee: () => new CarrybeeService(),
-} as const;
+};
 
-// ── Controller Functions ─────────────────────────────────
+/** Check fraud stats across a subset (or all) couriers. */
+export async function checkCouriers(
+  phone: string,
+  requested: readonly CourierName[] | undefined,
+): Promise<FraudReportDto> {
+  const targets = (requested && requested.length > 0 ? requested : COURIER_NAMES) as readonly CourierName[];
+  logger.info({ couriers: targets, requested: requested?.length ?? 0 }, 'Starting fraud check');
+  const entries = targets.map((name) => ({ name, service: serviceMap[name]() }));
 
-/**
- * Check fraud stats across ALL couriers for a phone number.
- * Uses Promise.allSettled for parallel execution (improvement over PHP sequential).
- *
- * PHP equivalent: FraudCheckerBdCourierManager::check($phoneNumber)
- */
-export async function checkAllCouriers(phone: string): Promise<FraudReportDto> {
-  logger.info({ phone }, 'Starting fraud check across all couriers');
-
-  const entries = ALL_COURIERS.map((name) => [name, serviceMap[name]()] as const);
-
-  const results = await Promise.allSettled(
-    entries.map(async ([name, service]) => {
-      const result = await service.getDeliveryStats(phone);
-      return { name, result };
-    }),
+  const settled = await Promise.allSettled(
+    entries.map(async ({ name, service }) => ({
+      name,
+      result: await service.getDeliveryStats(phone),
+    })),
   );
 
-  // Build the report (matches PHP FraudCheckerBdCourierManager structure)
-  const report: FraudReport = {
+  const perCourier: Record<CourierName, DeliveryResult | null> = {
     steadfast: null,
     pathao: null,
     redx: null,
     paperfly: null,
     carrybee: null,
-    aggregate: {
-      total_success: 0,
-      total_cancel: 0,
-      total_deliveries: 0,
-      success_ratio: 0,
-      cancel_ratio: 0,
-    },
   };
-
+  const failedCouriers: CourierName[] = [];
   let totalSuccess = 0;
   let totalCancel = 0;
+  let usable = 0;
 
-  for (const settled of results) {
-    if (settled.status === 'fulfilled') {
-      const { name, result } = settled.value;
-      report[name] = result;
-
-      // Aggregate stats (matches PHP: if isset($stats['success'], $stats['cancel']))
-      if (
-        result &&
-        typeof result.success === 'number' &&
-        typeof result.cancel === 'number' &&
-        !result.error
-      ) {
+  settled.forEach((item, i) => {
+    const entry = entries[i];
+    if (!entry) return;
+    const { name } = entry;
+    if (item.status === 'fulfilled') {
+      const { result } = item.value;
+      perCourier[name] = result;
+      if (result.errorCode) {
+        failedCouriers.push(name);
+      } else {
         totalSuccess += result.success;
         totalCancel += result.cancel;
       }
     } else {
-      logger.error({ error: settled.reason }, 'Courier service failed unexpectedly');
+      logger.error({ err: item.reason, courier: name }, 'Courier service threw unexpectedly');
+      failedCouriers.push(name);
     }
-  }
+  });
 
-  // Calculate aggregate ratios (matches PHP exactly)
   const overallTotal = totalSuccess + totalCancel;
-  report.aggregate.total_success = totalSuccess;
-  report.aggregate.total_cancel = totalCancel;
-  report.aggregate.total_deliveries = overallTotal;
+  const isPartial = failedCouriers.length > 0;
 
-  if (overallTotal > 0) {
-    report.aggregate.success_ratio = Math.round((totalSuccess / overallTotal) * 100 * 100) / 100;
-    report.aggregate.cancel_ratio = Math.round((totalCancel / overallTotal) * 100 * 100) / 100;
-  }
+  // Ratios are only meaningful when every courier succeeded.
+  const successRatio = isPartial || overallTotal === 0 ? null : round2((totalSuccess / overallTotal) * 100);
+  const cancelRatio = isPartial || overallTotal === 0 ? null : round2((totalCancel / overallTotal) * 100);
 
+  const aggregate: FraudReportDto['aggregate'] = {
+    totalSuccess,
+    totalCancel,
+    totalDeliveries: overallTotal,
+    successRatio,
+    cancelRatio,
+  };
   logger.info(
-    {
-      phone,
-      total_deliveries: overallTotal,
-      success_ratio: report.aggregate.success_ratio,
-    },
+    { couriers: targets, succeeded: usable, failed: failedCouriers.length, totalDeliveries: overallTotal },
     'Fraud check completed',
   );
 
-  return toFraudReportDto(report);
+  return toFraudReportDto(perCourier, aggregate);
 }
-
 /**
- * Check fraud stats for a SINGLE courier.
- *
- * PHP equivalent: instantiating a single service and calling getDeliveryStats()
+ * Check fraud stats for a SINGLE courier. Throws CourierUnavailableError
+ * when the courier cannot satisfy the request — routes propagate as 503.
  */
-export async function checkSingleCourier(
-  phone: string,
-  courier: CourierName,
-): Promise<SingleCourierCheckDto> {
-  logger.info({ phone, courier }, `Starting fraud check for ${courier}`);
+export async function checkSingleCourier(phone: string, courier: CourierName): Promise<SingleCourierCheckDto> {
+  logger.info({ courier }, `Starting single-courier fraud check for ${courier}`);
+  const factory = serviceMap[courier];
+  if (!factory) throw new CourierUnavailableError(courier, `Unknown courier: ${courier}`);
 
-  const serviceFactory = serviceMap[courier];
-  if (!serviceFactory) {
-    throw new Error(`Unknown courier: ${courier}`);
+  const result = await factory().getDeliveryStats(phone);
+
+  if (result.errorCode) {
+    throw new CourierUnavailableError(courier, `Courier '${courier}' could not satisfy the request`, {
+      meta: { errorCode: result.errorCode },
+    });
   }
 
-  const service = serviceFactory();
-  const result: DeliveryResult | null = await service.getDeliveryStats(phone);
-
-  logger.info({ phone, courier, result }, `Fraud check completed for ${courier}`);
-
   return toSingleCourierCheckDto(courier, phone, result);
+}
+
+/** Convenience for partial-failure response meta. */
+export function buildReportMeta(failedCouriers: readonly string[], succeeded: number): {
+  partial: boolean;
+  succeeded: number;
+  failed: number;
+  failedCouriers: string[];
+  generatedAt: string;
+} {
+  return {
+    partial: failedCouriers.length > 0,
+    succeeded,
+    failed: failedCouriers.length,
+    failedCouriers: [...failedCouriers],
+    // Round to seconds so ETag stays stable within the same request burst.
+    generatedAt: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
+  };
+}
+
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
